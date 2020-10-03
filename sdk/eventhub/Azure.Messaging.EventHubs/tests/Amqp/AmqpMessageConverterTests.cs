@@ -13,6 +13,8 @@ using Microsoft.Azure.Amqp.Framing;
 using NUnit.Framework;
 using NUnit.Framework.Constraints;
 
+using FramingData = Microsoft.Azure.Amqp.Framing.Data;
+
 namespace Azure.Messaging.EventHubs.Tests
 {
     /// <summary>
@@ -229,11 +231,11 @@ namespace Azure.Messaging.EventHubs.Tests
 
             if (pendingSequenceNumber.HasValue)
             {
-                Assert.That(message.MessageAnnotations.Map[AmqpProperty.PublishedSequenceNumber], Is.EqualTo(eventData.PendingPublishSequenceNumber.Value), "The publishing sequence number should have been set.");
+                Assert.That(message.MessageAnnotations.Map[AmqpProperty.ProducerSequenceNumber], Is.EqualTo(eventData.PendingPublishSequenceNumber.Value), "The publishing sequence number should have been set.");
             }
             else
             {
-                Assert.That(message.MessageAnnotations.Map.Any(item => item.Key.ToString() == AmqpProperty.PublishedSequenceNumber.Value), Is.False, "The publishing sequence number should not have been set.");
+                Assert.That(message.MessageAnnotations.Map.Any(item => item.Key.ToString() == AmqpProperty.ProducerSequenceNumber.Value), Is.False, "The publishing sequence number should not have been set.");
             }
 
             if (pendingGroupId.HasValue)
@@ -1373,7 +1375,7 @@ namespace Azure.Messaging.EventHubs.Tests
         {
             var converter = new AmqpMessageConverter();
 
-            using var response = AmqpMessage.Create(new Data { Value = new ArraySegment<byte>(new byte[] { 0x11, 0x22 }) });
+            using var response = AmqpMessage.Create(new FramingData { Value = new ArraySegment<byte>(new byte[] { 0x11, 0x22 }) });
             Assert.That(() => converter.CreateEventHubPropertiesFromResponse(response), Throws.InstanceOf<InvalidOperationException>());
         }
 
@@ -1522,7 +1524,7 @@ namespace Azure.Messaging.EventHubs.Tests
         {
             var converter = new AmqpMessageConverter();
 
-            using var response = AmqpMessage.Create(new Data { Value = new ArraySegment<byte>(new byte[] { 0x11, 0x22 }) });
+            using var response = AmqpMessage.Create(new FramingData { Value = new ArraySegment<byte>(new byte[] { 0x11, 0x22 }) });
             Assert.That(() => converter.CreatePartitionPropertiesFromResponse(response), Throws.InstanceOf<InvalidOperationException>());
         }
 
