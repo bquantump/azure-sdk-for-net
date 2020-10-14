@@ -11,7 +11,6 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
 using Microsoft.Azure.WebJobs.Host.Scale;
-using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -25,10 +24,12 @@ using Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners;
 using Azure.WebJobs.Extensions.Storage.Common.Tests;
 using Microsoft.Azure.WebJobs.Extensions.Storage.Common;
 using NUnit.Framework;
+using Azure.WebJobs.Extensions.Storage.Queues;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
 {
-    public class QueueListenerTests
+    public class QueueListenerTests : LiveTestBase<WebJobsTestEnvironment>
     {
         private Mock<QueueClient> _mockQueue;
         private QueueListener _listener;
@@ -80,14 +81,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         public TestFixture Fixture { get; set; }
 
         [Test]
-        [WebJobsLiveOnly]
         public void ScaleMonitor_Id_ReturnsExpectedValue()
         {
             Assert.AreEqual("testfunction-queuetrigger-testqueue", _listener.Descriptor.Id);
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public async Task GetMetrics_ReturnsExpectedResult()
         {
             var queuesOptions = new QueuesOptions();
@@ -122,7 +121,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public async Task GetMetrics_HandlesStorageExceptions()
         {
             var exception = new RequestFailedException(
@@ -144,7 +142,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public void GetScaleStatus_NoMetrics_ReturnsVote_None()
         {
             var context = new ScaleStatusContext<QueueTriggerMetrics>
@@ -161,7 +158,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public void GetScaleStatus_MessagesPerWorkerThresholdExceeded_ReturnsVote_ScaleOut()
         {
             var context = new ScaleStatusContext<QueueTriggerMetrics>
@@ -203,7 +199,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public void GetScaleStatus_QueueLengthIncreasing_ReturnsVote_ScaleOut()
         {
             var context = new ScaleStatusContext<QueueTriggerMetrics>
@@ -232,7 +227,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public void GetScaleStatus_QueueTimeIncreasing_ReturnsVote_ScaleOut()
         {
             var context = new ScaleStatusContext<QueueTriggerMetrics>
@@ -261,7 +255,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public void GetScaleStatus_QueueLengthDecreasing_ReturnsVote_ScaleIn()
         {
             var context = new ScaleStatusContext<QueueTriggerMetrics>
@@ -290,7 +283,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public void GetScaleStatus_QueueTimeDecreasing_ReturnsVote_ScaleIn()
         {
             var context = new ScaleStatusContext<QueueTriggerMetrics>
@@ -319,7 +311,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public void GetScaleStatus_QueueSteady_ReturnsVote_None()
         {
             var context = new ScaleStatusContext<QueueTriggerMetrics>
@@ -348,7 +339,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public void GetScaleStatus_QueueIdle_ReturnsVote_ScaleOut()
         {
             var context = new ScaleStatusContext<QueueTriggerMetrics>
@@ -377,7 +367,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public void GetScaleStatus_UnderSampleCountThreshold_ReturnsVote_None()
         {
             var context = new ScaleStatusContext<QueueTriggerMetrics>
@@ -396,7 +385,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public async Task UpdatedQueueMessage_RetainsOriginalProperties()
         {
             QueueClient queue = Fixture.CreateNewQueue();
@@ -438,7 +426,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         [Ignore("TODO (kasobol-msft) revisit this test if we put recordings in place, we don't use stateful message in V12")]
         public async Task RenewedQueueMessage_DeletesCorrectly()
         {
@@ -480,7 +467,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public void CreateQueueProcessor_CreatesProcessorCorrectly()
         {
             QueueClient poisonQueue = null;
@@ -550,7 +536,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public async Task ProcessMessageAsync_Success()
         {
             CancellationToken cancellationToken = new CancellationToken();
@@ -563,7 +548,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public async Task GetMessages_QueueCheckThrowsTransientError_ReturnsBackoffResult()
         {
             CancellationToken cancellationToken = new CancellationToken();
@@ -582,7 +566,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public async Task GetMessages_ChecksQueueExistence_UntilQueueExists()
         {
             var cancellationToken = new CancellationToken();
@@ -612,7 +595,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public async Task GetMessages_ResetsQueueExistenceCheck_OnException()
         {
             var cancellationToken = new CancellationToken();
@@ -635,7 +617,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public async Task ProcessMessageAsync_QueueBeginProcessingMessageReturnsFalse_MessageNotProcessed()
         {
             CancellationToken cancellationToken = new CancellationToken();
@@ -645,7 +626,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Test]
-        [WebJobsLiveOnly]
         public async Task ProcessMessageAsync_FunctionInvocationFails()
         {
             CancellationToken cancellationToken = new CancellationToken();
@@ -666,12 +646,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
                 IHost host = new HostBuilder()
                     .ConfigureDefaultTestHost(b =>
                     {
-                        b.AddAzureStorageBlobs().AddAzureStorageQueues();
+                        b.AddAzureStorageQueues();
                     })
                     .Build();
 
-                var storageAccount = host.GetStorageAccount();
-                QueueClient = storageAccount.CreateQueueServiceClient();
+                var queueServiceClientProvider = host.Services.GetRequiredService<QueueServiceClientProvider>();
+                QueueClient = queueServiceClientProvider.GetHost();
 
                 string queueName = string.Format("{0}-{1}", TestQueuePrefix, Guid.NewGuid());
                 Queue = QueueClient.GetQueueClient(queueName);

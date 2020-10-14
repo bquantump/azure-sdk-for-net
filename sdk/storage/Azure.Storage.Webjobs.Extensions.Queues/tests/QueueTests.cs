@@ -6,15 +6,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
 using Azure.Storage.Queues;
 using Azure.Storage.Queues.Models;
 using Azure.WebJobs.Extensions.Storage.Common.Tests;
-using Microsoft.Azure.WebJobs.Extensions.Storage.Common;
 using NUnit.Framework;
+using Azure.WebJobs.Extensions.Storage.Queues.Tests;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 {
@@ -22,14 +21,14 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
     {
         private const string TriggerQueueName = "input-queuetests";
         private const string QueueName = "output-queuetests";
-        private StorageAccount account;
+        private QueueServiceClient queueServiceClient;
 
         [SetUp]
         public void SetUp()
         {
-            account = AzuriteNUnitFixture.Instance.GetAccount();
-            account.CreateQueueServiceClient().GetQueueClient(TriggerQueueName).DeleteIfExists();
-            account.CreateQueueServiceClient().GetQueueClient(QueueName).DeleteIfExists();
+            queueServiceClient = AzuriteNUnitFixture.Instance.GetQueueServiceClient();
+            queueServiceClient.GetQueueClient(TriggerQueueName).DeleteIfExists();
+            queueServiceClient.GetQueueClient(QueueName).DeleteIfExists();
         }
 
         // Test binding to generics.
@@ -48,14 +47,15 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IHost host = new HostBuilder()
                 .ConfigureDefaultTestHost<GenericProgram<ICollector<string>>>(b =>
                 {
-                    b.UseStorage(account);
+                    b.AddAzureStorageQueues();
+                    b.UseQueueService(queueServiceClient);
                 })
                 .Build();
 
             await host.GetJobHost().CallAsync<GenericProgram<ICollector<string>>>("Func");
 
             // Now peek at messages.
-            var queue = account.CreateQueueServiceClient().GetQueueClient(QueueName);
+            var queue = queueServiceClient.GetQueueClient(QueueName);
             var msgs = (await queue.ReceiveMessagesAsync(10)).Value;
 
             Assert.AreEqual(1, msgs.Count());
@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IHost host = new HostBuilder()
                .ConfigureDefaultTestHost<ProgramWithStaticBadName>(builder =>
                {
-                   builder.AddAzureStorageBlobs().AddAzureStorageQueues();
+                   builder.AddAzureStorageQueues();
                })
                .Build();
 
@@ -114,7 +114,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IHost host = new HostBuilder()
                .ConfigureDefaultTestHost<ProgramWithVariableQueueName>(builder =>
                {
-                   builder.UseStorage(account);
+                   builder.AddAzureStorageQueues();
+                   builder.UseQueueService(queueServiceClient);
                })
                .ConfigureServices(services =>
                {
@@ -147,7 +148,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IHost host = new HostBuilder()
                 .ConfigureDefaultTestHost<ProgramWithVariableQueueName>(builder =>
                 {
-                    builder.UseStorage(account);
+                    builder.AddAzureStorageQueues();
+                    builder.UseQueueService(queueServiceClient);
                 })
                 .ConfigureServices(services =>
                 {
@@ -194,7 +196,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IHost host = new HostBuilder()
                 .ConfigureDefaultTestHost<ProgramWithTriggerAndBindingData>(b =>
                 {
-                    b.UseStorage(account);
+                    b.AddAzureStorageQueues();
+                    b.UseQueueService(queueServiceClient);
                 })
                 .Build();
 
@@ -206,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             // Now peek at messages.
             // queue name is normalized to lowercase.
-            var queue = account.CreateQueueServiceClient().GetQueueClient("qname-abc");
+            var queue = queueServiceClient.GetQueueClient("qname-abc");
             var msgs = (await queue.ReceiveMessagesAsync(10)).Value;
 
             Assert.AreEqual(1, msgs.Count());
@@ -254,7 +257,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IHost host = new HostBuilder()
                 .ConfigureDefaultTestHost<ProgramWithTriggerAndCompoundBindingData>(b =>
                 {
-                    b.UseStorage(account);
+                    b.AddAzureStorageQueues();
+                    b.UseQueueService(queueServiceClient);
                 })
                 .Build();
 
@@ -274,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             // Now peek at messages.
             // queue name is normalized to lowercase.
-            var queue = account.CreateQueueServiceClient().GetQueueClient("qname-abc");
+            var queue = queueServiceClient.GetQueueClient("qname-abc");
             var msgs = (await queue.ReceiveMessagesAsync(10)).Value;
 
             Assert.AreEqual(1, msgs.Count());
@@ -366,7 +370,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IHost host = new HostBuilder()
                 .ConfigureDefaultTestHost<ProgramBadContract>(b =>
                 {
-                    b.UseStorage(account);
+                    b.AddAzureStorageQueues();
+                    b.UseQueueService(queueServiceClient);
                 })
                 .Build();
 
@@ -390,7 +395,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IHost host = new HostBuilder()
                 .ConfigureDefaultTestHost<ProgramCantBindToObject>(b =>
                 {
-                    b.UseStorage(account);
+                    b.AddAzureStorageQueues();
+                    b.UseQueueService(queueServiceClient);
                 })
                 .Build();
 
@@ -421,7 +427,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IHost host = new HostBuilder()
                 .ConfigureDefaultTestHost<GenericProgram<T>>(b =>
                 {
-                    b.UseStorage(account);
+                    b.AddAzureStorageQueues();
+                    b.UseQueueService(queueServiceClient);
                 })
                 .Build();
 
@@ -434,18 +441,17 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         public async Task Queue_IfBoundToCloudQueue_BindsAndCreatesQueue()
         {
             // Arrange
-            var client = account.CreateQueueServiceClient();
-            var triggerQueue = await CreateQueue(client, TriggerQueueName);
+            var triggerQueue = await CreateQueue(queueServiceClient, TriggerQueueName);
             await triggerQueue.SendMessageAsync("ignore");
 
             // Act
-            QueueClient result = await RunTriggerAsync<QueueClient>(account, typeof(BindToCloudQueueProgram),
+            QueueClient result = await RunTriggerAsync<QueueClient>(typeof(BindToCloudQueueProgram),
                 (s) => BindToCloudQueueProgram.TaskSource = s);
 
             // Assert
             Assert.NotNull(result);
             Assert.AreEqual(QueueName, result.Name);
-            var queue = client.GetQueueClient(QueueName);
+            var queue = queueServiceClient.GetQueueClient(QueueName);
             Assert.True(await queue.ExistsAsync());
         }
 
@@ -454,16 +460,15 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         {
             // Arrange
             string expectedContent = Guid.NewGuid().ToString();
-            var client = account.CreateQueueServiceClient();
-            var triggerQueue = await CreateQueue(client, TriggerQueueName);
+            var triggerQueue = await CreateQueue(queueServiceClient, TriggerQueueName);
             await triggerQueue.SendMessageAsync(expectedContent);
 
             // Act
-            await RunTriggerAsync<object>(account, typeof(BindToICollectorCloudQueueMessageProgram),
+            await RunTriggerAsync<object>(typeof(BindToICollectorCloudQueueMessageProgram),
                 (s) => BindToICollectorCloudQueueMessageProgram.TaskSource = s);
 
             // Assert
-            var queue = client.GetQueueClient(QueueName);
+            var queue = queueServiceClient.GetQueueClient(QueueName);
             IEnumerable<QueueMessage> messages = (await queue.ReceiveMessagesAsync(10)).Value;
             Assert.NotNull(messages);
             Assert.AreEqual(1, messages.Count());
@@ -478,10 +483,14 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             return queue;
         }
 
-        private static async Task<TResult> RunTriggerAsync<TResult>(StorageAccount account, Type programType,
+        private async Task<TResult> RunTriggerAsync<TResult>(Type programType,
             Action<TaskCompletionSource<TResult>> setTaskSource)
         {
-            return await FunctionalTest.RunTriggerAsync<TResult>(account, programType, setTaskSource);
+            return await FunctionalTest.RunTriggerAsync<TResult>(b =>
+            {
+                b.AddAzureStorageQueues();
+                b.UseQueueService(queueServiceClient);
+            }, programType, setTaskSource);
         }
 
         private class BindToCloudQueueProgram
