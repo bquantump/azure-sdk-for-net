@@ -6,51 +6,30 @@ using System;
 using Azure.Core.TestFramework;
 using Azure.ResourceManager.Resources;
 using Azure.ResourceManager.TestFramework;
+using NUnit.Framework;
 
+
+//Everything is this class should be code generated with the exception users wanting to write custom resources
 namespace Azure.ResourceManager.Dns.Tests
 {
 
     [RunFrequency(RunTestFrequency.Manually)]
     public abstract class DnsManagementClientBase : ManagementRecordedTestBase<DnsManagementTestEnvironment>
     {
-        public string SubscriptionId { get; set; }
         public ResourcesManagementClient ResourcesManagementClient { get; set; }
-        public ResourcesOperations ResourcesOperations { get; set; }
-        public ProvidersOperations ResourceProvidersOperations { get; set; }
-        public ResourceGroupsOperations ResourceGroupsOperations { get; set; }
-        public RecordSetsOperations RecordSetsOperations { get; set; }
         public DnsManagementClient DnsManagementClient { get; set; }
-        public ZonesOperations ZonesOperations { get; set; }
         protected DnsManagementClientBase(bool isAsync) : base(isAsync)
         {
 
         }
+
+        //These could be made into properties, but thought here is user wanted to add other clients they will use for each test
+        //this would be an easy spot for them to put it (resource in this case)
+        [SetUp]
         protected void InitializeClients()
         {
-            SubscriptionId = TestEnvironment.SubscriptionId;
             ResourcesManagementClient = this.GetResourceManagementClient();
-            ResourcesOperations = ResourcesManagementClient.Resources;
-            ResourceProvidersOperations = ResourcesManagementClient.Providers;
-            ResourceGroupsOperations = ResourcesManagementClient.ResourceGroups;
-            DnsManagementClient = this.GetDnsManagementClient();
-            RecordSetsOperations = DnsManagementClient.RecordSets;
-            ZonesOperations = DnsManagementClient.Zones;
-        }
-        protected void initNewRecord()
-        {
-            ResourcesManagementClient = this.GetResourceManagementClient();
-            ResourcesOperations = ResourcesManagementClient.Resources;
-            ResourceProvidersOperations = ResourcesManagementClient.Providers;
-            ResourceGroupsOperations = ResourcesManagementClient.ResourceGroups;
-            DnsManagementClient = this.GetDnsManagementClient();
-            RecordSetsOperations = DnsManagementClient.RecordSets;
-            ZonesOperations = DnsManagementClient.Zones;
-        }
-
-        internal DnsManagementClient GetDnsManagementClient()
-        {
-            return CreateClient<DnsManagementClient>(this.SubscriptionId,
-                TestEnvironment.Credential, InstrumentClientOptions(new DnsManagementClientOptions()));
+            DnsManagementClient = this.GetManagementClient<DnsManagementClient>(new DnsManagementClientOptions());
         }
     }
 }

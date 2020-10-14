@@ -8,10 +8,11 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using NUnit.Framework;
 
 namespace Azure.ResourceManager.TestFramework
 {
-    public abstract class ManagementRecordedTestBase<TEnvironment> : RecordedTestBase<TEnvironment> where TEnvironment: TestEnvironment, new()
+    public abstract class ManagementRecordedTestBase<TEnvironment> : RecordedTestBase<TEnvironment> where TEnvironment : TestEnvironment, new()
     {
         private static TimeSpan ZeroPollingInterval { get; } = TimeSpan.FromSeconds(0);
 
@@ -49,6 +50,8 @@ namespace Azure.ResourceManager.TestFramework
                 options);
         }
 
+        //Always clean up resources in case user made any
+        [OneTimeTearDown]
         protected async Task CleanupResourceGroupsAsync()
         {
             if (CleanupPolicy != null && Mode != RecordedTestMode.Playback)
@@ -83,6 +86,13 @@ namespace Azure.ResourceManager.TestFramework
             if (Mode == RecordedTestMode.Playback)
                 return;
             Thread.Sleep(milliSeconds);
+        }
+
+        //Generic funtion to get a client and instrument it
+        protected T GetManagementClient<T>(ClientOptions options) where T : class
+        {
+            return this.CreateClient<T>(TestEnvironment.SubscriptionId,
+                TestEnvironment.Credential, InstrumentClientOptions(options));
         }
     }
 }
